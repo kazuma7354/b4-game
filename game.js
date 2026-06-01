@@ -42,6 +42,45 @@ let gameData = {
 };
 let audioCtx;
 
+/*プレイヤー画像*/
+const playerImg = new Image();
+playerImg.src = "player.png";
+
+/*敵用画像（複数枚ランダム表示）*/
+const enemyImgs = [
+  { src: "enemy1.png", img: new Image() },
+  { src: "enemy2.png", img: new Image() },
+  { src: "enemy3.png", img: new Image() },
+  { src: "enemy4.png", img: new Image() }
+];
+enemyImgs.forEach(e => e.img.src = e.src);
+
+/*ボス画像*/
+const bossImg = new Image();
+bossImg.src = "boss.png";
+
+/*コイン・弾・敵弾画像*/
+const coinImg = new Image();
+coinImg.src = "coin.png";
+
+const bulletImg = new Image();
+bulletImg.src = "bullet.png";
+
+const enemyBulletImg = new Image();
+enemyBulletImg.src = "enemy_bullet.png";
+
+/*効果音*/
+const soundDestroy = new Audio("destroy.mp3");
+const soundShoot = new Audio("shoot.mp3");
+const soundHit = new Audio("hit.mp3");
+const soundCoin = new Audio("coin.mp3");
+
+// 効果音のボリューム調整
+soundDestroy.volume = 0.3;
+soundShoot.volume = 0.2;
+soundHit.volume = 0.3;
+soundCoin.volume = 0.3;
+
 const settings = {
   playerSpeed: 4.5,
   bulletSpeed: 4,
@@ -156,7 +195,21 @@ function startLevel(level) {
 function addEnemy(type) {
   const x = Math.random() * (settings.canvasWidth - 60) + 30;
   const y = -40;
-  const base = { x, y, w: 40, h: 40, type, cooldown: 0, hp: type === "strong" ? 4 : 1, speed: type === "strong" ? 1.3 : 2.3 };
+  
+  // サイズと画像インデックスを決定
+  let size = 40;
+  let imgIndex = Math.floor(Math.random() * enemyImgs.length);  // ランダムに画像選択
+  
+  const base = { 
+    x, y, 
+    w: size,
+    h: size, 
+    type, 
+    cooldown: 0, 
+    hp: type === "strong" ? 4 : 1, 
+    speed: type === "strong" ? 1.3 : 2.3,
+    imgIndex: imgIndex  // 画像インデックスを保持
+  };
   gameData.enemies.push(base);
 }
 
@@ -172,13 +225,16 @@ function spawnEnemy() {
 }
 
 function spawnBoss() {
+  const bossSize = 100;
   gameData.boss = {
     x: 320,
     y: -120,
+
     w: 100,
     h: 100,
     hp: 25,
     maxHp: 25,
+
     phase: 0,
     cooldown: 0,
     time: 0,
@@ -190,7 +246,7 @@ function spawnBoss() {
 }
 
 function spawnItem(x, y, type) {
-  gameData.items.push({ x, y, w: 16, h: 16, type, vy: 2.2 });
+  gameData.items.push({ x, y, w: 24, h: 24, type, vy: 2.2 });  // 16x16 から 24x24 に変更
 }
 
 function rectCollision(a, b) {
@@ -217,7 +273,9 @@ function firePlayerBullet() {
   if (gameData.player.power > 1) {
     gameData.bullets.push({ x: gameData.player.x + 22, y: gameData.player.y - 10, w: 8, h: 16, vy: -settings.bulletSpeed, power: 1 });
   }
-  playTone(520, 0.08, "square", 0.08);
+  // MP3音声を再生
+  soundShoot.currentTime = 0;
+  soundShoot.play().catch(e => console.log("Shoot sound error:", e));
 }
 
 function updateBullets() {
@@ -417,6 +475,9 @@ function updateCollisions() {
     if (gameData.boss && bullet.homingActive && rectCollision(bullet, gameData.boss)) {
       gameData.boss.hp += 1;
       bullet.y = settings.canvasHeight + 30;
+      // MP3音声を再生
+      soundHit.currentTime = 0;
+      soundHit.play().catch(e => console.log("Hit sound error:", e));
     }
   });
   if (player.invincible > 0) player.invincible -= 1;
@@ -424,8 +485,13 @@ function updateCollisions() {
     if (rectCollision(item, player)) {
       if (item.type === "coin") {
         gameData.coins += 1;
+
+        // コイン取得音を再生
+        soundCoin.currentTime = 0;
+        soundCoin.play().catch(e => console.log("Coin sound error:", e));
+
         gameData.score += settings.coinValue;
-        playTone(660, 0.12, "triangle", 0.1);
+
       } else if (item.type === "power") {
         gameData.player.power = Math.min(4, gameData.player.power + 1);
         gameData.score += 15;
@@ -455,6 +521,10 @@ function updateCollisions() {
 function onEnemyDestroyed(enemy) {
   gameData.kills += 1;
   if (enemy.type === "strong") gameData.strongKills += 1;
+
+  // MP3音声を再生
+  soundDestroy.currentTime = 0;
+  soundDestroy.play().catch(e => console.log("Destroy sound error:", e));
   
   // Always add base score
   gameData.score += enemy.type === "strong" ? 25 : 10;
@@ -477,8 +547,6 @@ function onEnemyDestroyed(enemy) {
     else if (rand < 0.34) spawnItem(enemy.x + 12, enemy.y + 12, "heal");
     else if (rand < 0.44) spawnItem(enemy.x + 12, enemy.y + 12, "fireRate");
   }
-  
-  playTone(180, 0.16, "triangle", 0.16);
 }
 
 function onBossDefeated() {
@@ -559,16 +627,19 @@ function drawRoundRect(x, y, w, h, r) {
 }
 
 function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);    /*背景クリア*/
   ctx.fillStyle = "rgba(0,0,0,0.18)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "#5fd6ff";
-  drawRoundRect(gameData.player.x, gameData.player.y, gameData.player.w, gameData.player.h, 8);
-  if (gameData.player.invincible > 0) {
-    ctx.strokeStyle = "rgba(255,255,255,0.7)";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(gameData.player.x - 2, gameData.player.y - 2, gameData.player.w + 4, gameData.player.h + 4);
+  if (playerImg.complete && playerImg.naturalWidth > 0) {    /*プレイヤー描画*/
+    // 無敵時間中は点滅
+    if (gameData.player.invincible > 0) {
+      const alpha = Math.floor(gameData.player.invincible / 4) % 2 === 0 ? 1.0 : 0.8;
+      ctx.globalAlpha = alpha;
+    }
+    
+    ctx.drawImage(playerImg, gameData.player.x, gameData.player.y, 32, 32);
+    ctx.globalAlpha = 1.0;  // リセット重要！
   }
   if (gameData.player.shield > 0) {
     ctx.strokeStyle = "rgba(100,200,255,0.9)";
@@ -578,21 +649,59 @@ function render() {
     }
   }
 
-  gameData.bullets.forEach(b => {
-    ctx.fillStyle = "#ffff66";
-    drawRoundRect(b.x, b.y, b.w, b.h, 4);
+  gameData.bullets.forEach(b => {    /*プレイヤーの弾描画*/
+    if (bulletImg.complete && bulletImg.naturalWidth > 0) {
+      ctx.drawImage(bulletImg, b.x, b.y, b.w, b.h);
+    } else {
+      // 画像がない場合は代替表示（黄色三角形）
+      ctx.fillStyle = "#ffff66";
+      ctx.beginPath();
+      ctx.moveTo(b.x + b.w / 2, b.y);
+      ctx.lineTo(b.x + b.w, b.y + b.h);
+      ctx.lineTo(b.x, b.y + b.h);
+      ctx.closePath();
+      ctx.fill();
+    }
   });
+  
   gameData.enemyBullets.forEach(b => {
-    ctx.fillStyle = "#ff6a6a";
-    drawRoundRect(b.x, b.y, b.w, b.h, 4);
+    if (enemyBulletImg.complete && enemyBulletImg.naturalWidth > 0) {
+      ctx.drawImage(enemyBulletImg, b.x, b.y, b.w, b.h);
+    } else {
+      // 画像がない場合は代替表示（赤い円）
+      ctx.fillStyle = "#ff6a6a";
+      ctx.beginPath();
+      ctx.arc(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   });
-  gameData.enemies.forEach(enemy => {
-    ctx.fillStyle = enemy.type === "strong" ? "#ff7f3f" : "#a0d8ff";
-    drawRoundRect(enemy.x, enemy.y, enemy.w, enemy.h, 8);
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillRect(enemy.x, enemy.y - 6, enemy.w * (enemy.hp / (enemy.type === "strong" ? 4 : 1)), 4);
+
+  gameData.enemies.forEach(enemy => {    /*敵描画*/
+    // 画像がある場合は画像で描画
+    if (enemyImgs[enemy.imgIndex] && enemyImgs[enemy.imgIndex].img.complete && enemyImgs[enemy.imgIndex].img.naturalWidth > 0) {
+      ctx.drawImage(enemyImgs[enemy.imgIndex].img, enemy.x, enemy.y, enemy.w, enemy.h);
+    } else {
+      // 画像がない場合は代替表示
+      ctx.fillStyle = enemy.type === "strong" ? "#ff7f3f" : "#a0d8ff";
+      drawRoundRect(enemy.x, enemy.y, enemy.w, enemy.h, 8);
+    }
+    
+    // HP バー（強敵は赤、弱敵は白）
+    ctx.fillStyle = enemy.type === "strong" ? "#ff4444" : "rgba(255,255,255,0.8)";
+    const hpMax = enemy.type === "strong" ? 4 : 1;
+    ctx.fillRect(enemy.x, enemy.y - 6, enemy.w * (enemy.hp / hpMax), 4);
   });
+  
+  // ボス描画
   if (gameData.boss) {
+    if (bossImg.complete && bossImg.naturalWidth > 0) {
+      ctx.drawImage(bossImg, gameData.boss.x, gameData.boss.y, gameData.boss.w, gameData.boss.h);
+    } else {
+      // 画像がない場合は代替表示
+      ctx.fillStyle = "#ff3fe8";
+      drawRoundRect(gameData.boss.x, gameData.boss.y, gameData.boss.w, gameData.boss.h, 16);
+    }
+    
     ctx.fillStyle = "#ff3fe8";
     drawRoundRect(gameData.boss.x, gameData.boss.y, gameData.boss.w, gameData.boss.h, 16);
     ctx.fillStyle = "rgba(255,255,255,0.9)";
@@ -604,9 +713,11 @@ function render() {
     const bossTimeElapsed = (performance.now() - gameData.bossStart) / 1000;
     ctx.fillText(`ボス戦: ${bossTimeElapsed.toFixed(1)}秒`, 10, 450);
   }
+  
+  // アイテム描画
   gameData.items.forEach(item => {
     if (item.type === "coin") {
-      ctx.fillStyle = "#ffd44d";
+      ctx.drawImage(coinImg, item.x, item.y, item.w, item.h);
     } else if (item.type === "power") {
       ctx.fillStyle = "#a2ff80";
     } else if (item.type === "speed") {
