@@ -113,3 +113,25 @@ label {
     width: 100%;
   }
 }
+
+.top-scores {
+  background: rgba(45, 111, 246, 0.2);
+  border: 2px solid #2d6ff6;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.top-scores h3 {
+  margin: 0 0 12px 0;
+  color: #ffd700;
+  font-size: 18px;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+}
+
+.top-scores p {
+  margin: 8px 0;
+  color: #cfe3ff;
+  font-size: 13px;
+}
