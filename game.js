@@ -21,6 +21,7 @@ const rankingBack = document.getElementById("rankingBack");
 const retryButton = document.getElementById("retryButton");
 const backTitleFromGameOver = document.getElementById("backTitleFromGameOver");
 const saveScoreButton = document.getElementById("saveScore");
+const accessLogList = document.getElementById("accessLogList");
 
 let currentState = "title";
 let currentLevel = 1;
@@ -242,10 +243,40 @@ function showRanking() {
   } else {
     rankingList.innerHTML = "<li>まだスコアがありません</li>";
   }
+  showAccessLog();
   // Update active tab button
   document.querySelectorAll(".ranking-tab-button").forEach(button => {
     button.classList.toggle("active", Number(button.dataset.level) === rankingLevel);
   });
+}
+
+function loadAccessLog() {
+  const raw = localStorage.getItem("space-training-access-log") || "[]";
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function formatLogTimestamp(timestamp) {
+  try {
+    return new Date(timestamp).toLocaleString();
+  } catch {
+    return timestamp;
+  }
+}
+
+function showAccessLog() {
+  const logs = loadAccessLog();
+  if (logs.length) {
+    accessLogList.innerHTML = logs.slice().reverse().map(log => {
+      const time = formatLogTimestamp(log.timestamp);
+      return `<li>${time} — L${log.level} ${log.name} - ${log.score} 点</li>`;
+    }).join("");
+  } else {
+    accessLogList.innerHTML = "<li>まだプレイ履歴がありません</li>";
+  }
 }
 
 function startLevel(level) {
