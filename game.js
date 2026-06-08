@@ -126,6 +126,11 @@ function setState(newState) {
   gameOverScreen.classList.toggle("hidden", newState !== "gameOver");
   rankingScreen.classList.toggle("hidden", newState !== "ranking");
   document.getElementById("hud").style.display = newState === "play" ? "grid" : "none";
+  
+  // タイトル画面に遷移する時にトップスコアを更新
+  if (newState === "title") {
+    displayTopScoresOnTitle();
+  }
 }
 
 function loadRanking() {
@@ -145,6 +150,79 @@ function saveRankingEntry(entry, level = currentLevel || 1) {
   ranking.push(entry);
   ranking.sort((a, b) => b.score - a.score);
   localStorage.setItem(key, JSON.stringify(ranking.slice(0, 8)));
+  
+  // アクセスログを記録
+  logGameSession(entry, level);
+}
+
+// アクセスログを記録する関数
+function logGameSession(entry, level) {
+  const logKey = "space-training-access-log";
+  const raw = localStorage.getItem(logKey) || "[]";
+  let logs;
+  try {
+    logs = JSON.parse(raw);
+  } catch {
+    logs = [];
+  }
+  
+  logs.push({
+    name: entry.name,
+    level: level,
+    score: entry.score,
+    timestamp: new Date().toISOString()
+  });
+  
+  // 最新100件を保持
+  localStorage.setItem(logKey, JSON.stringify(logs.slice(-100)));
+}
+
+// 全レベルのトップスコアを取得する関数
+function getGlobalTopScores() {
+  const topScores = {};
+  
+  for (let level = 1; level <= 3; level++) {
+    const ranking = loadRankingForLevel(level);
+    if (ranking.length > 0) {
+      const topEntry = ranking[0];
+      topScores[level] = {
+        name: topEntry.name,
+        score: topEntry.score
+      };
+    } else {
+      topScores[level] = null;
+    }
+  }
+  
+  return topScores;
+}
+
+// タイトル画面にトップスコアを表示する関数
+function displayTopScoresOnTitle() {
+  const topScores = getGlobalTopScores();
+  const titleScreen = document.getElementById("titleScreen");
+  
+  // 既存のトップスコア表示を削除
+  const existingTopScores = titleScreen.querySelector(".top-scores");
+  if (existingTopScores) {
+    existingTopScores.remove();
+  }
+  
+  // トップスコア表示エリアを作成
+  const topScoresHtml = document.createElement("div");
+  topScoresHtml.className = "top-scores";
+  topScoresHtml.innerHTML = "<h3>🏆 トップスコア 🏆</h3>";
+  
+  for (let level = 1; level <= 3; level++) {
+    if (topScores[level]) {
+      topScoresHtml.innerHTML += `<p>レベル ${level}: <strong>${topScores[level].name}</strong> - ${topScores[level].score}点</p>`;
+    } else {
+      topScoresHtml.innerHTML += `<p>レベル ${level}: まだスコアがありません</p>`;
+    }
+  }
+  
+  // タイトル画面の最後に追加
+  titleScreen.appendChild(topScoresHtml);
 }
 
 function loadRankingForLevel(level = 1) {
@@ -865,5 +943,6 @@ document.querySelectorAll(".ranking-tab-button").forEach(button => {
 });
 
 showRanking();
+displayTopScoresOnTitle();
 setState("title");
 requestAnimationFrame(gameLoop);
