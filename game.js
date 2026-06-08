@@ -38,6 +38,8 @@ let gameData = {
   strongKills: 0,
   bossTime: null,
   timeLeft: 60,
+  elapsed: 0,
+  enemySpawnTimer: 120,
   score: 0,
 };
 let audioCtx;
@@ -81,6 +83,8 @@ soundShoot.volume = 0.2;
 soundHit.volume = 0.3;
 soundCoin.volume = 0.3;
 
+const BASE_FPS = 60;
+
 const settings = {
   playerSpeed: 4.5,
   bulletSpeed: 4,
@@ -93,8 +97,8 @@ const settings = {
 
 const levelSettings = {
   1: { timeLimit: 60, enemyFrequency: 120, enemyTypes: ["weak"], dropCoinRate: 0.4, scoreName: "coins" },
-  2: { timeLimit: 45, enemyFrequency: 120, enemyTypes: ["weak", "strong"], dropPowerRate: 0.25, scoreName: "kills" },
-  3: { timeLimit: null, enemyFrequency: 110, enemyTypes: ["weak", "strong"], bossTriggerScore: 15, bossActive: false, scoreName: "bossTime" },
+  2: { timeLimit: 45, enemyFrequency: 120, enemyTypes: ["weak", "strong"], dropCoinRate: 0, dropPowerRate: 0.25, scoreName: "kills" },
+  3: { timeLimit: null, enemyFrequency: 110, enemyTypes: ["weak", "strong"], bossTriggerScore: 15, bossActive: false, dropCoinRate: 0, scoreName: "bossTime" },
 };
 
 function initAudio() {
@@ -170,10 +174,22 @@ function startLevel(level) {
   currentLevel = level;
   // reset per-level runtime flags so repeated plays behave correctly
   if (levelSettings[level]) levelSettings[level].bossActive = false;
+  let enemySpawnTimer = levelSettings[level].enemyFrequency;
+  let initialEnemy = null;
+  if (level === 1) {
+    enemySpawnTimer = BASE_FPS * 3; // ステージ1開始後3秒だけ空白時間
+  }
+  if (level === 2) {
+    enemySpawnTimer = BASE_FPS * 5; // 最初の強敵1体が出現してから5秒後に次の出現
+    initialEnemy = "strong";
+  }
+
   gameData = {
     frame: 0,
+    elapsed: 0,
     startTime: performance.now(),
-    player: { x: 320, y: 820, w: 32, h: 32, hp: 5, cooldown: 0, power: 1, invincible: 0, speed: 1, shield: 0, fireRate: 1 },
+    enemySpawnTimer,
+    player: { x: 320, y: 820, w: 32, h: 32, hp: 10, cooldown: 0, power: 1, invincible: 0, speed: 1, shield: 0, fireRate: 1 },
     bullets: [],
     enemyBullets: [],
     enemies: [],
@@ -188,6 +204,7 @@ function startLevel(level) {
     gameOver: false,
     boss: null,
   };
+  if (initialEnemy) addEnemy(initialEnemy);
   setState("play");
   playTone(190, 0.18, "triangle", 0.16);
 }
@@ -253,19 +270,19 @@ function rectCollision(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-function updatePlayer() {
+function updatePlayer(frameDelta) {
   const p = gameData.player;
-  if (keys.ArrowLeft || keys.a) p.x -= settings.playerSpeed * p.speed;
-  if (keys.ArrowRight || keys.d) p.x += settings.playerSpeed * p.speed;
-  if (keys.ArrowUp || keys.w) p.y -= settings.playerSpeed * p.speed;
-  if (keys.ArrowDown || keys.s) p.y += settings.playerSpeed * p.speed;
+  if (keys.ArrowLeft || keys.a) p.x -= settings.playerSpeed * p.speed * frameDelta;
+  if (keys.ArrowRight || keys.d) p.x += settings.playerSpeed * p.speed * frameDelta;
+  if (keys.ArrowUp || keys.w) p.y -= settings.playerSpeed * p.speed * frameDelta;
+  if (keys.ArrowDown || keys.s) p.y += settings.playerSpeed * p.speed * frameDelta;
   p.x = Math.max(10, Math.min(settings.canvasWidth - p.w - 10, p.x));
   p.y = Math.max(10, Math.min(settings.canvasHeight - p.h - 10, p.y));
   if (keys.z && p.cooldown <= 0) {
     firePlayerBullet();
     p.cooldown = Math.max(20, 34 - p.power * 2 - p.fireRate * 4);
   }
-  p.cooldown -= 1;
+  p.cooldown -= frameDelta;
 }
 
 function firePlayerBullet() {
@@ -278,19 +295,19 @@ function firePlayerBullet() {
   soundShoot.play().catch(e => console.log("Shoot sound error:", e));
 }
 
-function updateBullets() {
-  gameData.bullets.forEach(b => b.y += b.vy);
-  gameData.enemyBullets.forEach(b => b.y += b.vy);
+function updateBullets(frameDelta) {
+  gameData.bullets.forEach(b => b.y += b.vy * frameDelta);
+  gameData.enemyBullets.forEach(b => b.y += b.vy * frameDelta);
   gameData.bullets = gameData.bullets.filter(b => b.y > -20);
   gameData.enemyBullets = gameData.enemyBullets.filter(b => b.y < settings.canvasHeight + 20);
 }
 
-function updateEnemies() {
+function updateEnemies(frameDelta) {
   gameData.enemies.forEach(enemy => {
-    enemy.y += enemy.speed;
-    enemy.cooldown -= 1;
+    enemy.y += enemy.speed * frameDelta;
+    enemy.cooldown -= frameDelta;
     if (enemy.type === "strong") {
-      enemy.x += Math.sin((gameData.frame + enemy.y) * 0.02) * 1.8;
+      enemy.x += Math.sin((gameData.frame + enemy.y) * 0.02) * 1.8 * frameDelta;
     }
     if (enemy.cooldown <= 0) {
       enemy.cooldown = enemy.type === "strong" ? 90 : 130;
@@ -323,7 +340,7 @@ function fireEnemyBullet(enemy, opts = { aim: false }) {
   }
 }
 
-function updateEnemyBullets() {
+function updateEnemyBullets(frameDelta) {
   gameData.enemyBullets.forEach(b => {
     // Update homing bullets
     if (b.homingActive && b.homingTime < b.homingDuration) {
@@ -333,24 +350,24 @@ function updateEnemyBullets() {
       const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
       b.vx = (dx / dist) * speed * 0.95 + b.vx * 0.05;
       b.vy = (dy / dist) * speed * 0.95 + b.vy * 0.05;
-      b.homingTime += 1;
+      b.homingTime += frameDelta;
     }
-    b.y += b.vy;
-    b.x += b.vx || 0;
+    b.y += b.vy * frameDelta;
+    b.x += (b.vx || 0) * frameDelta;
   });
 }
 
-function updateItems() {
-  gameData.items.forEach(item => item.y += item.vy);
+function updateItems(frameDelta) {
+  gameData.items.forEach(item => item.y += item.vy * frameDelta);
   gameData.items = gameData.items.filter(item => item.y < settings.canvasHeight + 30);
 }
 
-function updateBoss() {
+function updateBoss(frameDelta) {
   const boss = gameData.boss;
   if (!boss) return;
-  if (boss.y < 140) boss.y += 2.5;
-  boss.cooldown -= 1;
-  boss.time += 1;
+  if (boss.y < 140) boss.y += 2.5 * frameDelta;
+  boss.cooldown -= frameDelta;
+  boss.time += frameDelta;
   
   // Complex movement pattern: horizontal movement + approach to player
   const playerCenterX = gameData.player.x + gameData.player.w / 2;
@@ -358,15 +375,15 @@ function updateBoss() {
   const distToPlayer = playerCenterX - bossCenterX;
   
   // Horizontal sine wave movement
-  boss.x += Math.sin(gameData.frame * 0.015) * 2.5;
+  boss.x += Math.sin(gameData.elapsed * 0.9) * 2.5 * frameDelta;
   
   // Approach movement: gradually move towards or away from player
   if (boss.time % 120 < 60) {
     // Move towards player
-    boss.x += Math.sign(distToPlayer) * 1.2;
+    boss.x += Math.sign(distToPlayer) * 1.2 * frameDelta;
   } else {
     // Move away from player
-    boss.x -= Math.sign(distToPlayer) * 0.8;
+    boss.x -= Math.sign(distToPlayer) * 0.8 * frameDelta;
   }
   
   boss.x = Math.max(50, Math.min(settings.canvasWidth - boss.w - 50, boss.x));
@@ -376,62 +393,67 @@ function updateBoss() {
     const attackType = Math.floor((boss.time / 45) % 4);
     
     if (attackType === 0) {
-      // Attack type 0: Radial spread (aimed towards player, larger projectiles)
+      // Attack type 0: Radial spread aimed at the player
+      const dx = gameData.player.x + gameData.player.w / 2 - (boss.x + boss.w / 2);
+      const dy = gameData.player.y + gameData.player.h / 2 - (boss.y + boss.h / 2);
+      const baseAngle = Math.atan2(dy, dx);
       for (let i = 0; i < 7; i++) {
-        const angle = Math.PI * 0.9 * (i / 6) - 0.45 * Math.PI + (boss.time * 0.02);
-        const spreadX = Math.cos(angle) * 3.6;
-        const spreadY = Math.sin(angle) * 3.6;
+        const spread = (i - 3) * 0.22;
+        const angle = baseAngle + spread;
+        const speed = 3.8;
         gameData.enemyBullets.push({ 
-          x: boss.x + boss.w / 2 - 9, 
+          x: boss.x + boss.w / 2 - 14, 
           y: boss.y + boss.h / 2, 
-          w: 18, 
-          h: 18, 
-          vx: spreadX, 
-          vy: spreadY,
+          w: 28, 
+          h: 28, 
+          vx: Math.cos(angle) * speed, 
+          vy: Math.sin(angle) * speed,
           homingTime: 0,
           homingActive: false
         });
       }
     } else if (attackType === 1) {
-      // Attack type 1: Homing bullets
+      // Attack type 1: Stronger homing bullets
       const dx = gameData.player.x + gameData.player.w / 2 - (boss.x + boss.w / 2);
-      const dy = gameData.player.y - (boss.y + boss.h / 2);
+      const dy = gameData.player.y + gameData.player.h / 2 - (boss.y + boss.h / 2);
       const dist = Math.max(1, Math.hypot(dx, dy));
-      for (let i = 0; i < 3; i++) {
-        const angle = (i - 1) * 0.3;
-        const vx = (dx / dist) * 3.2 + Math.cos(angle) * 1.5;
-        const vy = (dy / dist) * 3.2 + Math.sin(angle) * 1.5;
+      for (let i = 0; i < 4; i++) {
+        const angle = (i - 1.5) * 0.25;
+        const speed = 3.5;
+        const vx = (dx / dist) * speed + Math.cos(angle) * 1.5;
+        const vy = (dy / dist) * speed + Math.sin(angle) * 1.5;
         gameData.enemyBullets.push({ 
-          x: boss.x + boss.w / 2 - 7, 
+          x: boss.x + boss.w / 2 - 12, 
           y: boss.y + boss.h / 2, 
-          w: 14, 
-          h: 14, 
+          w: 24, 
+          h: 24, 
           vx: vx, 
           vy: vy,
           homingTime: 0,
           homingActive: true,
-          homingDuration: 90
+          homingDuration: 120
         });
       }
     } else if (attackType === 2) {
-      // Attack type 2: Straight down shots with spread
+      // Attack type 2: Straight down shots with wider spread
       for (let i = 0; i < 5; i++) {
-        const offsetX = (i - 2) * 1.5;
+        const offsetX = (i - 2) * 2.0;
         gameData.enemyBullets.push({ 
-          x: boss.x + boss.w / 2 - 7 + offsetX, 
+          x: boss.x + boss.w / 2 - 12 + offsetX, 
           y: boss.y + boss.h / 2, 
-          w: 14, 
-          h: 14, 
+          w: 24, 
+          h: 24, 
           vx: 0, 
-          vy: 3.5,
+          vy: 4.2,
           homingTime: 0,
           homingActive: false
         });
       }
     } else {
-      // Attack type 3: Aimed shots with tracking
-      fireEnemyBullet({ x: boss.x + boss.w / 2 - 6, y: boss.y + boss.h / 2, w: boss.w, h: boss.h }, { aim: true });
-      fireEnemyBullet({ x: boss.x + boss.w / 2 - 6, y: boss.y + boss.h / 2, w: boss.w, h: boss.h }, { aim: true });
+      // Attack type 3: Multiple aimed tracking shots
+      for (let i = 0; i < 3; i++) {
+        fireEnemyBullet({ x: boss.x + boss.w / 2 - 6 + (i - 1) * 10, y: boss.y + boss.h / 2, w: boss.w, h: boss.h }, { aim: true });
+      }
     }
     boss.phase += 1;
   }
@@ -480,18 +502,15 @@ function updateCollisions() {
       soundHit.play().catch(e => console.log("Hit sound error:", e));
     }
   });
-  if (player.invincible > 0) player.invincible -= 1;
-  gameData.items.forEach((item, idx) => {
+  if (player.invincible > 0) player.invincible = Math.max(0, player.invincible - (gameData.lastFrameDelta || 0));
+  gameData.items = gameData.items.filter((item, idx) => {
     if (rectCollision(item, player)) {
       if (item.type === "coin") {
         gameData.coins += 1;
-
         // コイン取得音を再生
         soundCoin.currentTime = 0;
         soundCoin.play().catch(e => console.log("Coin sound error:", e));
-
         gameData.score += settings.coinValue;
-
       } else if (item.type === "power") {
         gameData.player.power = Math.min(4, gameData.player.power + 1);
         gameData.score += 15;
@@ -513,8 +532,9 @@ function updateCollisions() {
         gameData.score += 20;
         playTone(600, 0.16, "sine", 0.12);
       }
-      gameData.items.splice(idx, 1);
+      return false; // アイテムを削除
     }
+    return true; // アイテムを保持
   });
 }
 
@@ -534,18 +554,18 @@ function onEnemyDestroyed(enemy) {
     spawnItem(enemy.x + 12, enemy.y + 12, "coin");
   }
   
-  // Power item appears in level 2 and 3
-  if ((currentLevel === 2 || currentLevel === 3) && Math.random() < levelSettings[2].dropPowerRate) {
-    spawnItem(enemy.x + 12, enemy.y + 12, "power");
-  }
-  
-  // Level 2 and 3 share the same advanced item pool
-  if (currentLevel === 2 || currentLevel === 3) {
-    const rand = Math.random();
-    if (rand < 0.12) spawnItem(enemy.x + 12, enemy.y + 12, "speed");
-    else if (rand < 0.24) spawnItem(enemy.x + 12, enemy.y + 12, "shield");
-    else if (rand < 0.34) spawnItem(enemy.x + 12, enemy.y + 12, "heal");
-    else if (rand < 0.44) spawnItem(enemy.x + 12, enemy.y + 12, "fireRate");
+  // アイテムは強敵討伐のメリットのみ
+  if (enemy.type === "strong") {
+    if ((currentLevel === 2 || currentLevel === 3) && Math.random() < levelSettings[2].dropPowerRate) {
+      spawnItem(enemy.x + 12, enemy.y + 12, "power");
+    }
+    if (currentLevel === 2 || currentLevel === 3) {
+      const rand = Math.random();
+      if (rand < 0.12) spawnItem(enemy.x + 12, enemy.y + 12, "speed");
+      else if (rand < 0.24) spawnItem(enemy.x + 12, enemy.y + 12, "shield");
+      else if (rand < 0.34) spawnItem(enemy.x + 12, enemy.y + 12, "heal");
+      else if (rand < 0.44) spawnItem(enemy.x + 12, enemy.y + 12, "fireRate");
+    }
   }
 }
 
@@ -553,6 +573,7 @@ function onBossDefeated() {
   const now = performance.now();
   gameData.bossTime = (now - gameData.bossStart) / 1000;
   gameData.boss = null;
+  gameData.bossStart = null;
   gameData.gameOver = true;
   playTone(120, 0.5, "sawtooth", 0.2);
 }
@@ -560,13 +581,20 @@ function onBossDefeated() {
 function updateGame() {
   if (currentState !== "play") return;
   const config = levelSettings[currentLevel];
-  gameData.frame += 1;
-  updatePlayer();
-  updateBullets();
-  updateEnemyBullets();
-  updateEnemies();
-  updateItems();
-  updateBoss();
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - (gameData.lastTimestamp || now)) / 1000);
+  gameData.lastTimestamp = now;
+  const frameDelta = dt * BASE_FPS;
+  gameData.lastFrameDelta = frameDelta;
+  gameData.frame += frameDelta;
+  gameData.elapsed += dt;
+
+  updatePlayer(frameDelta);
+  updateBullets(frameDelta);
+  updateEnemyBullets(frameDelta);
+  updateEnemies(frameDelta);
+  updateItems(frameDelta);
+  updateBoss(frameDelta);
   updateCollisions();
 
   if (config.timeLimit !== null) {
@@ -579,8 +607,13 @@ function updateGame() {
   if (!gameData.boss && currentLevel === 3 && config.bossActive && gameData.kills >= config.bossTriggerScore && !gameData.gameOver) {
     // boss defeated handled in onBossDefeated
   }
-  if (gameData.frame % config.enemyFrequency === 0 && !gameData.boss) {
-    spawnEnemy();
+
+  if (!gameData.boss) {
+    gameData.enemySpawnTimer -= frameDelta;
+    while (gameData.enemySpawnTimer <= 0) {
+      spawnEnemy();
+      gameData.enemySpawnTimer += config.enemyFrequency;
+    }
   }
 
   if (gameData.gameOver) {
@@ -593,6 +626,17 @@ function showGameOver() {
   // Score is now accumulated during gameplay (addition based)
   let finalScoreValue = gameData.score;
   
+  // ステージ3の場合、ボス撃破タイムから減点形式でスコア算出
+  if (currentLevel === 3) {
+    if (gameData.bossTime) {
+      const baseBossScore = 2000;
+      const timePenalty = Math.round(gameData.bossTime * 30);
+      finalScoreValue = Math.max(100, baseBossScore - timePenalty);
+    } else {
+      finalScoreValue = 0;
+    }
+  }
+  
   // Ensure score never becomes negative
   finalScoreValue = Math.max(finalScoreValue, 0);
   gameData.score = finalScoreValue;
@@ -600,8 +644,12 @@ function showGameOver() {
   finalScore.textContent = `スコア: ${finalScoreValue}`;
   
   // Level-specific result messages
-  if (currentLevel === 3 && gameData.bossTime) {
-    finalMessage.textContent = `ボス撃破タイム: ${gameData.bossTime.toFixed(2)} 秒`;
+  if (currentLevel === 3) {
+    if (gameData.bossTime) {
+      finalMessage.textContent = `ボス撃破タイム: ${gameData.bossTime.toFixed(2)} 秒`;
+    } else {
+      finalMessage.textContent = `ボス未討伐`;
+    }
   } else if (currentLevel === 1) {
     finalMessage.textContent = `撃墜数: ${gameData.kills} / コイン: ${gameData.coins}`;
   } else if (currentLevel === 2) {
@@ -640,6 +688,11 @@ function render() {
     
     ctx.drawImage(playerImg, gameData.player.x, gameData.player.y, 32, 32);
     ctx.globalAlpha = 1.0;  // リセット重要！
+    
+    // プレイヤーのHP バー表示（敵と同じ形式）
+    ctx.fillStyle = "rgba(255,100,100,0.9)";
+    const playerHpMax = 10;
+    ctx.fillRect(gameData.player.x, gameData.player.y + 35, gameData.player.w * (gameData.player.hp / playerHpMax), 4);
   }
   if (gameData.player.shield > 0) {
     ctx.strokeStyle = "rgba(100,200,255,0.9)";
@@ -702,8 +755,7 @@ function render() {
       drawRoundRect(gameData.boss.x, gameData.boss.y, gameData.boss.w, gameData.boss.h, 16);
     }
     
-    ctx.fillStyle = "#ff3fe8";
-    drawRoundRect(gameData.boss.x, gameData.boss.y, gameData.boss.w, gameData.boss.h, 16);
+    // HP バー
     ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.fillRect(70, 25, 500 * (gameData.boss.hp / gameData.boss.maxHp), 20);
     
@@ -717,7 +769,10 @@ function render() {
   // アイテム描画
   gameData.items.forEach(item => {
     if (item.type === "coin") {
-      ctx.drawImage(coinImg, item.x, item.y, item.w, item.h);
+      if (coinImg.complete && coinImg.naturalWidth > 0) {
+        ctx.drawImage(coinImg, item.x, item.y, item.w, item.h);
+      }
+      return;
     } else if (item.type === "power") {
       ctx.fillStyle = "#a2ff80";
     } else if (item.type === "speed") {
