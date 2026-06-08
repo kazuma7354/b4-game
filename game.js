@@ -1,3 +1,5 @@
+import { saveScoreToSupabase, fetchTopScoresByLevel, fetchTopScoresForAllLevels } from './supabase.js';
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const titleScreen = document.getElementById("titleScreen");
@@ -21,7 +23,6 @@ const rankingBack = document.getElementById("rankingBack");
 const retryButton = document.getElementById("retryButton");
 const backTitleFromGameOver = document.getElementById("backTitleFromGameOver");
 const saveScoreButton = document.getElementById("saveScore");
-const accessLogList = document.getElementById("accessLogList");
 
 let currentState = "title";
 let currentLevel = 1;
@@ -139,7 +140,17 @@ function loadRanking() {
   return loadRankingForLevel(currentLevel || 1);
 }
 
-function saveRankingEntry(entry, level = currentLevel || 1) {
+async function saveRankingEntry(entry, level = currentLevel || 1) {
+  saveLocalRankingEntry(entry, level);
+  try {
+    const result = await saveScoreToSupabase(entry.name, level, entry.score);
+    console.log('Supabase score save result:', result);
+  } catch (err) {
+    console.error('Supabase score save failed:', err);
+  }
+}
+
+function saveLocalRankingEntry(entry, level = currentLevel || 1) {
   const key = `space-training-ranking-${level}`;
   const raw = localStorage.getItem(key) || "[]";
   let ranking;
@@ -151,39 +162,32 @@ function saveRankingEntry(entry, level = currentLevel || 1) {
   ranking.push(entry);
   ranking.sort((a, b) => b.score - a.score);
   localStorage.setItem(key, JSON.stringify(ranking.slice(0, 8)));
-  
-  // アクセスログを記録
-  logGameSession(entry, level);
 }
 
-// アクセスログを記録する関数
-function logGameSession(entry, level) {
-  const logKey = "space-training-access-log";
-  const raw = localStorage.getItem(logKey) || "[]";
-  let logs;
+function loadLocalRankingForLevel(level = 1) {
+  const key = `space-training-ranking-${level}`;
+  const raw = localStorage.getItem(key) || "[]";
   try {
-    logs = JSON.parse(raw);
+    return JSON.parse(raw);
   } catch {
-    logs = [];
+    return [];
   }
-  
-  logs.push({
-    name: entry.name,
-    level: level,
-    score: entry.score,
-    timestamp: new Date().toISOString()
-  });
-  
-  // 最新100件を保持
-  localStorage.setItem(logKey, JSON.stringify(logs.slice(-100)));
 }
 
-// 全レベルのトップスコアを取得する関数
-function getGlobalTopScores() {
+async function loadRankingForLevel(level = 1) {
+  const remoteRanking = await fetchTopScoresByLevel(level);
+  if (remoteRanking && remoteRanking.length > 0) {
+    return remoteRanking;
+  }
+  return loadLocalRankingForLevel(level);
+}
+
+async function getGlobalTopScores() {
   const topScores = {};
-  
+  const allLevels = await fetchTopScoresForAllLevels();
+
   for (let level = 1; level <= 3; level++) {
-    const ranking = loadRankingForLevel(level);
+    const ranking = allLevels[level] || loadLocalRankingForLevel(level);
     if (ranking.length > 0) {
       const topEntry = ranking[0];
       topScores[level] = {
@@ -194,13 +198,13 @@ function getGlobalTopScores() {
       topScores[level] = null;
     }
   }
-  
+
   return topScores;
 }
 
 // タイトル画面にトップスコアを表示する関数
-function displayTopScoresOnTitle() {
-  const topScores = getGlobalTopScores();
+async function displayTopScoresOnTitle() {
+  const topScores = await getGlobalTopScores();
   const titleScreen = document.getElementById("titleScreen");
   
   // 既存のトップスコア表示を削除
@@ -226,57 +230,17 @@ function displayTopScoresOnTitle() {
   titleScreen.appendChild(topScoresHtml);
 }
 
-function loadRankingForLevel(level = 1) {
-  const key = `space-training-ranking-${level}`;
-  const raw = localStorage.getItem(key) || "[]";
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function showRanking() {
-  const list = loadRankingForLevel(rankingLevel);
+async function showRanking() {
+  const list = await loadRankingForLevel(rankingLevel);
   if (list.length) {
     rankingList.innerHTML = list.map(item => `<li>${item.name} - ${item.score}</li>`).join("");
   } else {
     rankingList.innerHTML = "<li>まだスコアがありません</li>";
   }
-  showAccessLog();
   // Update active tab button
   document.querySelectorAll(".ranking-tab-button").forEach(button => {
     button.classList.toggle("active", Number(button.dataset.level) === rankingLevel);
   });
-}
-
-function loadAccessLog() {
-  const raw = localStorage.getItem("space-training-access-log") || "[]";
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function formatLogTimestamp(timestamp) {
-  try {
-    return new Date(timestamp).toLocaleString();
-  } catch {
-    return timestamp;
-  }
-}
-
-function showAccessLog() {
-  const logs = loadAccessLog();
-  if (logs.length) {
-    accessLogList.innerHTML = logs.slice().reverse().map(log => {
-      const time = formatLogTimestamp(log.timestamp);
-      return `<li>${time} — L${log.level} ${log.name} - ${log.score} 点</li>`;
-    }).join("");
-  } else {
-    accessLogList.innerHTML = "<li>まだプレイ履歴がありません</li>";
-  }
 }
 
 function startLevel(level) {
@@ -426,11 +390,6 @@ function updateEnemies(frameDelta) {
   });
   // remove enemies that passed below the visible area so they cannot fire or interact
   gameData.enemies = gameData.enemies.filter(e => e.y < settings.canvasHeight && e.hp > 0);
-}
-
-function fireEnemyBullet(enemy) {
-  // legacy single-arg; keep compatibility by delegating
-  return fireEnemyBullet(enemy, { aim: true });
 }
 
 // fireEnemyBullet supports an options object: { aim: boolean }
@@ -951,9 +910,9 @@ rankingBack.addEventListener("click", () => setState("title"));
 backToTitle.addEventListener("click", () => setState("title"));
 retryButton.addEventListener("click", () => startLevel(currentLevel));
 backTitleFromGameOver.addEventListener("click", () => setState("title"));
-saveScoreButton.addEventListener("click", () => {
+saveScoreButton.addEventListener("click", async () => {
   const name = playerNameInput.value.trim() || "PLAYER";
-  saveRankingEntry({ name, score: gameData.score }, currentLevel);
+  await saveRankingEntry({ name, score: gameData.score }, currentLevel);
   playerNameInput.value = "";
   showRanking();
   setState("ranking");
