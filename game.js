@@ -94,7 +94,7 @@ const settings = {
 const levelSettings = {
   1: { timeLimit: 60, enemyFrequency: 120, enemyTypes: ["weak"], dropCoinRate: 0.4, scoreName: "coins" },
   2: { timeLimit: 45, enemyFrequency: 110, enemyTypes: ["weak", "strong"], dropPowerRate: 0.25, scoreName: "kills" },
-  3: { timeLimit: null, enemyFrequency: 100, enemyTypes: ["weak", "strong"], bossTriggerScore: 20, bossActive: false, scoreName: "bossTime" },
+  3: { timeLimit: null, enemyFrequency: 100, enemyTypes: ["weak", "strong"], bossTriggerScore: 2, bossActive: false, scoreName: "bossTime" },
 };
 
 function initAudio() {
