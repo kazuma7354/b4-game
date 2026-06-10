@@ -1,0 +1,137 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at top, #081325 0%, #02060d 60%);
+  color: #ffffff;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+#app {
+  position: relative;
+  width: 640px;
+  max-width: 100%;
+}
+canvas {
+  width: 100%;
+  border: 2px solid #2d6ff6;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1), #000);
+  display: block;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.82);
+  text-align: center;
+}
+.overlay.hidden {
+  display: none;
+}
+button {
+  padding: 12px 22px;
+  border: none;
+  border-radius: 999px;
+  background: #2d6ff6;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+}
+button:hover {
+  background: #5f8cff;
+}
+.levelButtons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+#hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: grid;
+  gap: 6px;
+  color: #cfe3ff;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 8px rgba(45, 111, 246, 0.8);
+}
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+input {
+  border: 1px solid #5f8cff;
+  border-radius: 8px;
+  padding: 8px;
+  background: #081a33;
+  color: #fff;
+}
+label {
+  font-size: 14px;
+}
+.ranking-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.ranking-tab-button {
+  padding: 10px 16px;
+  border: 2px solid #5f8cff;
+  border-radius: 8px;
+  background: rgba(45, 111, 246, 0.3);
+  color: #cfe3ff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.ranking-tab-button:hover {
+  background: #2d6ff6;
+}
+.ranking-tab-button.active {
+  background: #2d6ff6;
+  color: white;
+}
+@media (max-width: 700px) {
+  #app {
+    width: 100%;
+  }
+  button {
+    width: 100%;
+  }
+}
+
+.top-scores {
+  background: rgba(45, 111, 246, 0.2);
+  border: 2px solid #2d6ff6;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.top-scores h3 {
+  margin: 0 0 12px 0;
+  color: #ffd700;
+  font-size: 18px;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+}
+
+.top-scores p {
+  margin: 8px 0;
+  color: #cfe3ff;
+  font-size: 13px;
+}
