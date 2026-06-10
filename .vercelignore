@@ -1,0 +1,9 @@
+node_modules
+.git
+.github
+*.log
+dist
+build
+/.vercel
+README.md
+*.psd
