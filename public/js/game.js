@@ -34,7 +34,7 @@ let gameData = {
   enemyBullets: [],
   enemies: [],
   items: [],
-  boss: null,
+  effects: [],
   coins: 0,
   kills: 0,
   strongKills: 0,
@@ -72,6 +72,26 @@ bulletImg.src = "../bullet.png";
 
 const enemyBulletImg = new Image();
 enemyBulletImg.src = "../enemy_bullet.png";
+
+/*アイテム画像*/
+const powerUpImg = new Image();
+powerUpImg.src = "../magazine.png";
+
+const speedUpImg = new Image();
+speedUpImg.src = "../speed_up.png";
+
+const shieldImg = new Image();
+shieldImg.src = "../shield.png";
+
+const healImg = new Image();
+healImg.src = "../heart.png";
+
+const fireRateImg = new Image();
+fireRateImg.src = "../shoot_faster.png";
+
+/*爆発エフェクト画像*/
+const defeatImg = new Image();
+defeatImg.src = "../defeat.png";
 
 /*効果音*/
 const soundDestroy = new Audio("../destroy.mp3");
@@ -267,6 +287,7 @@ function startLevel(level) {
     enemyBullets: [],
     enemies: [],
     items: [],
+    effects: [],
     score: 0,
     coins: 0,
     kills: 0,
@@ -337,6 +358,18 @@ function spawnBoss() {
 
 function spawnItem(x, y, type) {
   gameData.items.push({ x, y, w: 24, h: 24, type, vy: 2.2 });  // 16x16 から 24x24 に変更
+}
+
+/*爆発エフェクトを生成*/
+function spawnEffect(x, y, size = 40, duration = 30) {
+  gameData.effects.push({
+    x: x - size / 2,
+    y: y - size / 2,
+    w: size,
+    h: size,
+    life: duration,
+    maxLife: duration
+  });
 }
 
 function rectCollision(a, b) {
@@ -428,6 +461,12 @@ function updateEnemyBullets(frameDelta) {
 function updateItems(frameDelta) {
   gameData.items.forEach(item => item.y += item.vy * frameDelta);
   gameData.items = gameData.items.filter(item => item.y < settings.canvasHeight + 30);
+}
+
+/*エフェクト更新*/
+function updateEffects() {
+  gameData.effects.forEach(effect => effect.life -= 1);
+  gameData.effects = gameData.effects.filter(effect => effect.life > 0);
 }
 
 function updateBoss(frameDelta) {
@@ -568,6 +607,9 @@ function updateCollisions() {
       // MP3音声を再生
       soundHit.currentTime = 0;
       soundHit.play().catch(e => console.log("Hit sound error:", e));
+      
+      // 被弾時の爆発エフェクト
+      spawnEffect(player.x + player.w / 2, player.y + player.h / 2, 50, 20);
     }
   });
   if (player.invincible > 0) player.invincible = Math.max(0, player.invincible - (gameData.lastFrameDelta || 0));
@@ -613,6 +655,9 @@ function onEnemyDestroyed(enemy) {
   // MP3音声を再生
   soundDestroy.currentTime = 0;
   soundDestroy.play().catch(e => console.log("Destroy sound error:", e));
+  
+  // 爆発エフェクト生成
+  spawnEffect(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, enemy.w + 20, 25);
   
   // Always add base score
   gameData.score += enemy.type === "strong" ? 25 : 10;
@@ -664,6 +709,7 @@ function updateGame() {
   updateItems(frameDelta);
   updateBoss(frameDelta);
   updateCollisions();
+  updateEffects();  // エフェクト更新を追加
 
   if (config.timeLimit !== null) {
     const elapsedSeconds = Math.floor((performance.now() - gameData.startTime) / 1000);
@@ -838,23 +884,57 @@ function render() {
   gameData.items.forEach(item => {
     if (item.type === "coin") {
       if (coinImg.complete && coinImg.naturalWidth > 0) {
-        ctx.drawImage(coinImg, item.x, item.y, item.w, item.h);
+        ctx.drawImage(coinImg, item.x, item.y, 32, 32);
       }
       return;
     } else if (item.type === "power") {
-      ctx.fillStyle = "#a2ff80";
+      if (powerUpImg.complete && powerUpImg.naturalWidth > 0) {
+        ctx.drawImage(powerUpImg, item.x, item.y, 32, 32);
+      }
+      return;
     } else if (item.type === "speed") {
-      ctx.fillStyle = "#ffaa00";
+      if (speedUpImg.complete && speedUpImg.naturalWidth > 0) {
+        ctx.drawImage(speedUpImg, item.x, item.y, 32, 32);
+      }
+      return;
     } else if (item.type === "shield") {
-      ctx.fillStyle = "#00ccff";
+      if (shieldImg.complete && shieldImg.naturalWidth > 0) {
+        ctx.drawImage(shieldImg, item.x, item.y, 32, 32);
+      }
+      return;
     } else if (item.type === "heal") {
-      ctx.fillStyle = "#ff99ff";
+      if (healImg.complete && healImg.naturalWidth > 0) {
+        ctx.drawImage(healImg, item.x, item.y, 32, 32);
+      }
+      return;
     } else if (item.type === "fireRate") {
-      ctx.fillStyle = "#ffff00";
+      if (fireRateImg.complete && fireRateImg.naturalWidth > 0) {
+        ctx.drawImage(fireRateImg, item.x, item.y, 32, 32);
+      }
+      return;
     }
     ctx.beginPath();
     ctx.arc(item.x + item.w / 2, item.y + item.h / 2, item.w / 2, 0, Math.PI * 2);
     ctx.fill();
+  });
+}
+
+/*エフェクト描画*/
+function renderEffects() {
+  gameData.effects.forEach(effect => {
+    if (defeatImg.complete && defeatImg.naturalWidth > 0) {
+      // 透明度を生命時間に応じて変更（フェードアウト効果）
+      const opacity = effect.life / effect.maxLife;
+      ctx.globalAlpha = opacity;
+      ctx.drawImage(defeatImg, effect.x, effect.y, effect.w, effect.h);
+      ctx.globalAlpha = 1.0;
+    } else {
+      // 画像がない場合は黄色い円で代替表示
+      ctx.fillStyle = `rgba(255, 200, 0, ${effect.life / effect.maxLife})`;
+      ctx.beginPath();
+      ctx.arc(effect.x + effect.w / 2, effect.y + effect.h / 2, effect.w / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   });
 }
 
@@ -888,6 +968,7 @@ function updateHud() {
 function gameLoop() {
   updateGame();
   render();
+  renderEffects();  // エフェクト描画を追加
   updateHud();
   requestAnimationFrame(gameLoop);
 }
