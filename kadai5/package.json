@@ -1,0 +1,12 @@
+{
+  "name": "b4zemi_課題Ⅴ共有用",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "echo 'Starting the application...'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
