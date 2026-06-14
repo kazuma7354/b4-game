@@ -580,7 +580,7 @@ function updateCollisions() {
         soundCoin.play().catch(e => console.log("Coin sound error:", e));
         gameData.score += settings.coinValue;
       } else if (item.type === "power") {
-        gameData.player.power = Math.min(4, gameData.player.power + 1);
+        gameData.player.power = 2; // 1回目の取得のみ有効（2発発射に固定）
         gameData.score += 15;
         playTone(320, 0.16, "sine", 0.12);
       } else if (item.type === "speed") {
@@ -594,7 +594,21 @@ function updateCollisions() {
       } else if (item.type === "heal") {
         gameData.player.hp = Math.min(gameData.player.hp + 2, 10);
         gameData.score += 30;
-        playTone(380, 0.16, "sine", 0.12);
+        
+        // 特別な回復用SE（Web Audio APIによるアルペジオ）
+        initAudio();
+        const now = audioCtx.currentTime;
+        [392, 523, 659, 784].forEach((freq, index) => {
+          const osc = audioCtx.createOscillator();
+          const vol = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          vol.gain.value = 0.1;
+          osc.connect(vol);
+          vol.connect(audioCtx.destination);
+          osc.start(now + index * 0.06);
+          osc.stop(now + index * 0.06 + 0.12);
+        });
       } else if (item.type === "fireRate") {
         gameData.player.fireRate = Math.min(3, gameData.player.fireRate + 0.5);
         gameData.score += 20;
@@ -624,7 +638,8 @@ function onEnemyDestroyed(enemy) {
   
   // アイテムは強敵討伐のメリットのみ
   if (enemy.type === "strong") {
-    if ((currentLevel === 2 || currentLevel === 3) && Math.random() < levelSettings[2].dropPowerRate) {
+    // 攻撃力増加アイテムはプレイヤーの攻撃力が初期状態（1）の場合のみドロップする
+    if ((currentLevel === 2 || currentLevel === 3) && gameData.player.power === 1 && Math.random() < levelSettings[2].dropPowerRate) {
       spawnItem(enemy.x + 12, enemy.y + 12, "power");
     }
     if (currentLevel === 2 || currentLevel === 3) {
@@ -856,6 +871,22 @@ function render() {
     ctx.arc(item.x + item.w / 2, item.y + item.h / 2, item.w / 2, 0, Math.PI * 2);
     ctx.fill();
   });
+
+  /* 画面左上へのステータス（バフ）表示（追加箇所） */
+  if (currentState === "play") {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.font = "bold 16px Arial";
+    let buffY = 30; // 表示開始のY座標
+    
+    if (gameData.player.power > 1) {
+      ctx.fillText("攻撃力UP", 15, buffY);
+      buffY += 25; // 次の文字と重ならないように下にずらす
+    }
+    if (gameData.player.shield > 0) {
+      ctx.fillText(`🛡️ シールド×${gameData.player.shield}`, 15, buffY);
+      buffY += 25;
+    }
+  }
 }
 
 function updateHud() {
@@ -875,7 +906,7 @@ function updateHud() {
   // Add item status if any active
   const statusItems = [];
   if (gameData.player.shield > 0) statusItems.push(`シールド×${gameData.player.shield}`);
-  if (gameData.player.speed > 1) statusItems.push(`速度UP`);
+  if (gameData.player.speed > 1) statusItems.push(`移動速度UP`);
   if (gameData.player.fireRate > 1) statusItems.push(`連射UP`);
   
   if (statusItems.length > 0) {
