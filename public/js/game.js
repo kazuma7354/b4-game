@@ -1,5 +1,7 @@
 import { saveScoreToSupabase, fetchTopScoresByLevel, fetchTopScoresForAllLevels } from '../supabaseClient.js';
 
+console.log('✓ game.js loaded successfully');
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const titleScreen = document.getElementById("titleScreen");
@@ -23,6 +25,15 @@ const rankingBack = document.getElementById("rankingBack");
 const retryButton = document.getElementById("retryButton");
 const backTitleFromGameOver = document.getElementById("backTitleFromGameOver");
 const saveScoreButton = document.getElementById("saveScore");
+
+// Diagnostic: Check if elements exist
+if (!startButton) console.error("ERROR: startButton not found in DOM");
+if (!rankButton) console.error("ERROR: rankButton not found in DOM");
+if (!backToTitle) console.error("ERROR: backToTitle not found in DOM");
+if (!rankingBack) console.error("ERROR: rankingBack not found in DOM");
+if (!retryButton) console.error("ERROR: retryButton not found in DOM");
+if (!backTitleFromGameOver) console.error("ERROR: backTitleFromGameOver not found in DOM");
+if (!saveScoreButton) console.error("ERROR: saveScoreButton not found in DOM");
 
 let currentState = "title";
 let currentLevel = 1;
@@ -1032,28 +1043,50 @@ console.log('Attaching event listeners to buttons...');
 console.log('startButton:', startButton);
 console.log('rankButton:', rankButton);
 
-startButton.addEventListener("click", () => {
-  console.log('START button clicked');
-  setState("levelSelect");
-});
+if (startButton) {
+  startButton.addEventListener("click", () => {
+    console.log('START button clicked');
+    setState("levelSelect");
+  });
+} else {
+  console.error('ERROR: Cannot attach event listener to startButton - element not found!');
+}
 
-rankButton.addEventListener("click", () => { 
-  console.log('RANK button clicked');
-  rankingLevel = currentLevel || 1;
-  showRanking(); 
-  setState("ranking"); 
-});
-rankingBack.addEventListener("click", () => setState("title"));
-backToTitle.addEventListener("click", () => setState("title"));
-retryButton.addEventListener("click", () => startLevel(currentLevel));
-backTitleFromGameOver.addEventListener("click", () => setState("title"));
-saveScoreButton.addEventListener("click", async () => {
-  const name = playerNameInput.value.trim() || "PLAYER";
-  await saveRankingEntry({ name, score: gameData.score }, currentLevel);
-  playerNameInput.value = "";
-  showRanking();
-  setState("ranking");
-});
+if (rankButton) {
+  rankButton.addEventListener("click", () => { 
+    console.log('RANK button clicked');
+    rankingLevel = currentLevel || 1;
+    showRanking(); 
+    setState("ranking"); 
+  });
+} else {
+  console.error('ERROR: Cannot attach event listener to rankButton - element not found!');
+}
+
+// Attach event listeners with null checks
+if (rankingBack) rankingBack.addEventListener("click", () => setState("title"));
+else console.error('ERROR: rankingBack button not found');
+
+if (backToTitle) backToTitle.addEventListener("click", () => setState("title"));
+else console.error('ERROR: backToTitle button not found');
+
+if (retryButton) retryButton.addEventListener("click", () => startLevel(currentLevel));
+else console.error('ERROR: retryButton button not found');
+
+if (backTitleFromGameOver) backTitleFromGameOver.addEventListener("click", () => setState("title"));
+else console.error('ERROR: backTitleFromGameOver button not found');
+
+if (saveScoreButton) {
+  saveScoreButton.addEventListener("click", async () => {
+    const name = playerNameInput.value.trim() || "PLAYER";
+    await saveRankingEntry({ name, score: gameData.score }, currentLevel);
+    playerNameInput.value = "";
+    showRanking();
+    setState("ranking");
+  });
+} else {
+  console.error('ERROR: saveScoreButton not found');
+}
 
 document.querySelectorAll(".levelButton").forEach(button => {
   button.addEventListener("click", () => {
