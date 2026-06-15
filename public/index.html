@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Space Training - ホーム</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at top, #081325 0%, #02060d 60%);
+      color: #ffffff;
+      font-family: "Segoe UI", Arial, sans-serif;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+    }
+    
+    h1 {
+      font-size: 48px;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(45, 111, 246, 0.8);
+    }
+    
+    .subtitle {
+      font-size: 18px;
+      color: #cfe3ff;
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+    
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+    
+    a, button {
+      display: inline-block;
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #2d6ff6 0%, #5f8cff 100%);
+      color: white;
+      text-decoration: none;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    
+    a:hover, button:hover {
+      background: linear-gradient(135deg, #5f8cff 0%, #7fa3ff 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(45, 111, 246, 0.4);
+    }
+    
+    .secondary-link {
+      background: rgba(45, 111, 246, 0.2);
+      border: 2px solid #5f8cff;
+    }
+    
+    .secondary-link:hover {
+      background: rgba(45, 111, 246, 0.3);
+    }
+    
+    .info-box {
+      background: rgba(45, 111, 246, 0.15);
+      border-left: 4px solid #2d6ff6;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: left;
+    }
+    
+    .info-box h3 {
+      margin-top: 0;
+      color: #ffd700;
+    }
+    
+    .info-box p {
+      margin: 8px 0;
+      color: #cfe3ff;
+      font-size: 14px;
+    }
+    
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Space Training 🚀</h1>
+    <p class="subtitle">
+      移動・回避・射撃を学ぶ縦スクロールシューティング<br>
+      3つのレベルで技を磨こう！
+    </p>
+    
+    <div class="button-group">
+      <a href="pages/game.html">🎮 ゲームをプレイ</a>
+    </div>
+    
+    <div class="info-box">
+      <h3>📖 ゲームについて</h3>
+      <p><strong>レベル 1:</strong> コインを集めよう！ 敵を撃退して移動に慣れよう。</p>
+      <p><strong>レベル 2:</strong> 強敵が登場！ 回避と射撃の技を磨こう。</p>
+      <p><strong>レベル 3:</strong> ボスとの決戦！ すべての技が必要だ。</p>
+      <p style="margin-top: 16px; border-top: 1px solid rgba(45, 111, 246, 0.3); padding-top: 12px;">
+        <strong>操作:</strong> ←→↑↓ キーで移動、Z キーで射撃
+      </p>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/egjs-flicking/3.x.x/flicking.js"></script>
+</body>
+</html>

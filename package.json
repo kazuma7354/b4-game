@@ -1,0 +1,29 @@
+{
+  "name": "space-training-shooter",
+  "version": "1.0.0",
+  "description": "Web ブラウザで動作する縦スクロールシューティングゲーム。Supabase ランキング連携対応。",
+  "type": "module",
+  "main": "public/index.html",
+  "scripts": {
+    "start": "python -m http.server 8000 --directory public",
+    "start:python3": "python3 -m http.server 8000 --directory public",
+    "dev": "npx http-server public -p 8000",
+    "build": "echo 'No build step required - pure HTML/CSS/JS project'"
+  },
+  "keywords": [
+    "game",
+    "shooter",
+    "canvas",
+    "supabase",
+    "ranking"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/space-training-shooter"
+  },
+  "dependencies": {
+    "@egjs/flicking": "^4.15.0"
+  }
+}

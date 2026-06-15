@@ -4,20 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Space Training Shooter</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <div id="app">
     <canvas id="gameCanvas" width="640" height="900"></canvas>
 
-    <div class="overlay" id="titleScreen">    <!-- タイトル画面 -->
+    <div class="overlay" id="titleScreen">
       <h1>Space Training</h1>
       <p>移動・回避・射撃を学ぶ縦スクロールシューティング</p>
       <button id="startButton">プレイ開始</button>
       <button id="rankButton">ランキングを見る</button>
     </div>
 
-    <div class="overlay hidden" id="levelSelect">    <!-- レベル選択画面 -->
+    <div class="overlay hidden" id="levelSelect">
       <h2>レベルを選択</h2>
       <div class="levelButtons">
         <button class="levelButton" data-level="1">レベル 1</button>
@@ -27,7 +27,7 @@
       <button id="backToTitle">タイトルへ戻る</button>
     </div>
 
-    <div class="overlay hidden" id="gameOverScreen">    <!-- ゲームオーバー画面 -->
+    <div class="overlay hidden" id="gameOverScreen">
       <h2>ステージ終了</h2>
       <p id="finalMessage"></p>
       <p id="finalScore"></p>
@@ -37,25 +37,28 @@
       <button id="backTitleFromGameOver">タイトルへ</button>
     </div>
 
-    <div class="overlay hidden" id="rankingScreen">    <!-- ランキング画面 -->
+    <div class="overlay hidden" id="rankingScreen">
       <h2>ランキング</h2>
       <div class="ranking-tabs">
         <button class="ranking-tab-button" data-level="1">レベル 1</button>
         <button class="ranking-tab-button" data-level="2">レベル 2</button>
         <button class="ranking-tab-button" data-level="3">レベル 3</button>
       </div>
-      <ol id="rankingList"></ol>
+      <div class="ranking-area">
+        <h3>ランキング</h3>
+        <ol id="rankingList"></ol>
+      </div>
       <button id="rankingBack">タイトルへ戻る</button>
     </div>
 
     <section id="hud">
       <div class="hud-row"><span id="hudLevel">LEVEL 1</span></div>
-      <div class="hud-row"><span id="hudHp">HP: 5</span><span id="hudTime">TIME: 60</span></div>
+      <div class="hud-row"><span id="hudHp">HP: 10</span><span id="hudTime">TIME: 60</span></div>
       <div class="hud-row"><span id="hudScore">SCORE: 0</span></div>
       <div class="hud-row"><span id="hudStatus">操作: ←→↑↓ / Z:射撃</span></div>
     </section>
   </div>
 
-  <script src="game.js"></script>
+  <script type="module" src="/js/game.js"></script>
 </body>
 </html>

@@ -1,0 +1,5 @@
+{
+  "buildCommand": "true",
+  "installCommand": "echo 'skipped'",
+  "outputDirectory": "public"
+}
