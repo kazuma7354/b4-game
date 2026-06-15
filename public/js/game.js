@@ -236,13 +236,13 @@ async function displayTopScoresOnTitle() {
   // トップスコア表示エリアを作成
   const topScoresHtml = document.createElement("div");
   topScoresHtml.className = "top-scores";
-  topScoresHtml.innerHTML = "<h3>🏆 Top Scores 🏆</h3>";
+  topScoresHtml.innerHTML = "<h3>🏆 トップスコア 🏆</h3>";
   
   for (let level = 1; level <= 3; level++) {
     if (topScores[level]) {
-      topScoresHtml.innerHTML += `<p>Level ${level}: <strong>${topScores[level].name}</strong> - ${topScores[level].score} points</p>`;
+      topScoresHtml.innerHTML += `<p>レベル ${level}: <strong>${topScores[level].name}</strong> - ${topScores[level].score}点</p>`;
     } else {
-      topScoresHtml.innerHTML += `<p>Level ${level}: No scores</p>`;
+      topScoresHtml.innerHTML += `<p>レベル ${level}: まだスコアがありません</p>`;
     }
   }
   
@@ -255,7 +255,7 @@ async function showRanking() {
   if (list.length) {
     rankingList.innerHTML = list.map(item => `<li>${item.name} - ${item.score}</li>`).join("");
   } else {
-    rankingList.innerHTML = "<li>まだスコアがありません No scores available</li>";
+    rankingList.innerHTML = "<li>まだスコアがありません</li>";
   }
   // Update active tab button
   document.querySelectorAll(".ranking-tab-button").forEach(button => {
@@ -774,21 +774,21 @@ function showGameOver() {
   finalScoreValue = Math.max(finalScoreValue, 0);
   gameData.score = finalScoreValue;
   
-  finalScore.textContent = `Score: ${finalScoreValue}`;
+  finalScore.textContent = `スコア: ${finalScoreValue}`;
   
   // Level-specific result messages
   if (currentLevel === 3) {
     if (gameData.bossTime) {
-      finalMessage.textContent = `ボス撃破タイム(Boss Defeat Time): ${gameData.bossTime.toFixed(2)} 秒`;
+      finalMessage.textContent = `ボス撃破タイム: ${gameData.bossTime.toFixed(2)} 秒`;
     } else {
-      finalMessage.textContent = `ボス未討伐(Boss Not Defeated)`;
+      finalMessage.textContent = `ボス未討伐`;
     }
   } else if (currentLevel === 1) {
-    finalMessage.textContent = `撃墜数(Kills): ${gameData.kills} / コイン(Coins): ${gameData.coins}`;
+    finalMessage.textContent = `撃墜数: ${gameData.kills} / コイン: ${gameData.coins}`;
   } else if (currentLevel === 2) {
-    finalMessage.textContent = `撃墜数(Kills): ${gameData.kills} / 強敵(Strong Enemies): ${gameData.strongKills}`;
+    finalMessage.textContent = `撃墜数: ${gameData.kills} （強敵: ${gameData.strongKills}）`;
   } else {
-    finalMessage.textContent = `撃墜数(Kills): ${gameData.kills} / コイン(Coins): ${gameData.coins}`;
+    finalMessage.textContent = `撃墜数: ${gameData.kills} / コイン: ${gameData.coins}`;
   }
 }
 
@@ -942,6 +942,23 @@ function render() {
     ctx.fill();
   });
 
+  /* 画面左上へのステータス（バフ）表示（追加箇所） */
+  if (currentState === "play") {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.font = "bold 16px Arial";
+    let buffY = 30; // 表示開始のY座標
+    
+    if (gameData.player.power > 1) {
+      ctx.fillText("攻撃力UP", 15, buffY);
+      buffY += 25; // 次の文字と重ならないように下にずらす
+    }
+    if (gameData.player.shield > 0) {
+      ctx.fillText(`🛡️ シールド×${gameData.player.shield}`, 15, buffY);
+      buffY += 25;
+    }
+  }
+}
+
 /*エフェクト描画*/
 function renderEffects() {
   gameData.effects.forEach(effect => {
@@ -967,7 +984,7 @@ function updateHud() {
   hudTime.textContent = levelSettings[currentLevel].timeLimit !== null ? `TIME: ${gameData.timeLeft}` : `TIME: ---`;
   // ステージ1のときはコイン枚数を、ステージ3のときはSCOREを非表示(---)に設定
   if (currentLevel === 1) {
-    hudScore.textContent = `SCORE: ${gameData.score} | COINS: ${gameData.coins}`;
+    hudScore.textContent = `SCORE: ${gameData.score} | コイン: ${gameData.coins}`;
   } else if (currentLevel === 3) {
     hudScore.textContent = `SCORE: ---`;
   } else {
@@ -976,23 +993,23 @@ function updateHud() {
   
   // Status display
   // 操作説明を常にプレイ画面下部に表示し続けるよう修正
-  let statusText = "【操作(Controls)】←→↑↓:移動(Move) / Z:射撃(Shoot) ｜ ";
+  let statusText = "【操作】←→↑↓:移動 / Z:射撃 ｜ ";
   if (currentLevel === 3) {
-    statusText = "ボス戦: 弾を避けて攻撃パターンを読む(Boss Fight: Dodge and Read Patterns)";
+    statusText = "ボス戦: 弾を避けて攻撃パターンを読む";
   } else {
-    statusText = "通常ステージ: 弾をよけて敵を倒す(Regular Stage: Dodge Bullets and Defeat Enemies)";
+    statusText = "通常ステージ: 弾をよけて敵を倒す";
   }
   
 const itemBuffs = [];
-  if (gameData.player.power > 1) itemBuffs.push("攻撃力(Attack)UP");
-  if (gameData.player.shield > 0) itemBuffs.push(`シールド(Shield)×${gameData.player.shield}`);
-  if (gameData.player.speed > 1) itemBuffs.push("移動速度(Speed)UP");
-  if (gameData.player.fireRate > 1) itemBuffs.push("連射(Fire Rate)UP");
+  if (gameData.player.power > 1) itemBuffs.push("攻撃力UP");
+  if (gameData.player.shield > 0) itemBuffs.push(`🛡️ シールド×${gameData.player.shield}`);
+  if (gameData.player.speed > 1) itemBuffs.push("移動速度UP");
+  if (gameData.player.fireRate > 1) itemBuffs.push("連射UP");
   
   const buffText = itemBuffs.length > 0 ? itemBuffs.join(" ｜ ") : "なし";
   
   // innerHTMLを用いて、元のテキストの下の行にアイテム強化の行を表示
-  hudStatus.innerHTML = `${statusText}<br>【強化(Buffs)】${buffText}`;
+  hudStatus.innerHTML = `${statusText}<br>【強化】${buffText}`;
 }
 
 function gameLoop() {
