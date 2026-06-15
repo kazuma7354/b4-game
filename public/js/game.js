@@ -99,7 +99,17 @@ const soundShoot = new Audio("../shoot.mp3");
 const soundHit = new Audio("../hit.mp3");
 const soundCoin = new Audio("../coin.mp3");
 
-// 効果音のボリューム調整
+/*BGM*/
+const bgmNormal = new Audio("../bgm.mp3");
+const bgmBoss = new Audio("../boss_bgm.mp3");
+
+// BGMの設定
+bgmNormal.loop = true;  // ループ再生
+bgmBoss.loop = true;    // ループ再生
+bgmNormal.volume = 0.1; // 音量設定（0～1）
+bgmBoss.volume = 1.0;   // 音量設定（0～1）
+
+let currentBGM = null;  // 現在再生中のBGM
 soundDestroy.volume = 0.3;
 soundShoot.volume = 0.2;
 soundHit.volume = 0.3;
@@ -143,6 +153,15 @@ function playTone(freq, duration = 0.12, type = "sine", gain = 0.12) {
 
 function setState(newState) {
   currentState = newState;
+  
+  // タイトル画面に戻るときはBGMを停止
+  if (newState === "title") {
+    bgmNormal.pause();
+    bgmBoss.pause();
+    bgmNormal.currentTime = 0;
+    bgmBoss.currentTime = 0;
+  }
+  
   titleScreen.classList.toggle("hidden", newState !== "title");
   levelSelect.classList.toggle("hidden", newState !== "levelSelect");
   gameOverScreen.classList.toggle("hidden", newState !== "gameOver");
@@ -300,6 +319,14 @@ function startLevel(level) {
   };
   if (initialEnemy) addEnemy(initialEnemy);
   setState("play");
+  
+  // 通常BGMを再生開始
+  bgmBoss.pause();
+  bgmBoss.currentTime = 0;
+  bgmNormal.currentTime = 0;
+  bgmNormal.play().catch(e => console.log("BGM play error:", e));
+  currentBGM = "normal";
+  
   playTone(190, 0.18, "triangle", 0.16);
 }
 
@@ -353,6 +380,17 @@ function spawnBoss() {
     vy: 0,
   };
   gameData.bossStart = performance.now();
+  
+  // プレイヤーをボス戦開始時に無敵にして、誤ったダメージを防ぐ
+  gameData.player.invincible = 180;
+  
+  // ボス戦BGMに切り替え
+  bgmNormal.pause();
+  bgmNormal.currentTime = 0;
+  bgmBoss.currentTime = 0;
+  bgmBoss.play().catch(e => console.log("Boss BGM play error:", e));
+  currentBGM = "boss";
+  
   playTone(80, 0.4, "sawtooth", 0.2);
 }
 
@@ -662,16 +700,16 @@ function onEnemyDestroyed(enemy) {
   // Always add base score
   gameData.score += enemy.type === "strong" ? 25 : 10;
   
-  // Drop coin items in all levels
-  if (Math.random() < levelSettings[currentLevel].dropCoinRate) {
-    spawnItem(enemy.x + 12, enemy.y + 12, "coin");
-  }
+  // Drop items - only one per enemy
+  const itemRand = Math.random();
+  const coinRate = levelSettings[currentLevel].dropCoinRate;
+  const powerRate = (currentLevel === 2 || currentLevel === 3) ? levelSettings[2].dropPowerRate : 0;
   
-  // アイテムは強敵討伐のメリットのみ
-  if (enemy.type === "strong") {
-    if ((currentLevel === 2 || currentLevel === 3) && Math.random() < levelSettings[2].dropPowerRate) {
-      spawnItem(enemy.x + 12, enemy.y + 12, "power");
-    }
+  if (itemRand < coinRate) {
+    spawnItem(enemy.x + 12, enemy.y + 12, "coin");
+  } else if (enemy.type === "strong" && itemRand < coinRate + powerRate) {
+    spawnItem(enemy.x + 12, enemy.y + 12, "power");
+  }
     if (currentLevel === 2 || currentLevel === 3) {
       const rand = Math.random();
       if (rand < 0.12) spawnItem(enemy.x + 12, enemy.y + 12, "speed");
@@ -689,6 +727,10 @@ function onBossDefeated() {
   gameData.bossStart = null;
   gameData.gameOver = true;
   playTone(120, 0.5, "sawtooth", 0.2);
+  
+  // ボス戦BGMを停止
+  bgmBoss.pause();
+  bgmBoss.currentTime = 0;
 }
 
 function updateGame() {
@@ -736,6 +778,12 @@ function updateGame() {
 }
 
 function showGameOver() {
+  // BGMを停止
+  bgmNormal.pause();
+  bgmBoss.pause();
+  bgmNormal.currentTime = 0;
+  bgmBoss.currentTime = 0;
+  
   setState("gameOver");
   // Score is now accumulated during gameplay (addition based)
   let finalScoreValue = gameData.score;
