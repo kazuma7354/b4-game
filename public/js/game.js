@@ -1011,8 +1011,17 @@ window.addEventListener("keydown", e => {
 });
 window.addEventListener("keyup", e => keys[e.key] = false);
 
-startButton.addEventListener("click", () => setState("levelSelect"));
+console.log('Attaching event listeners to buttons...');
+console.log('startButton:', startButton);
+console.log('rankButton:', rankButton);
+
+startButton.addEventListener("click", () => {
+  console.log('START button clicked');
+  setState("levelSelect");
+});
+
 rankButton.addEventListener("click", () => { 
+  console.log('RANK button clicked');
   rankingLevel = currentLevel || 1;
   showRanking(); 
   setState("ranking"); 
@@ -1043,7 +1052,18 @@ document.querySelectorAll(".ranking-tab-button").forEach(button => {
   });
 });
 
-showRanking();
-displayTopScoresOnTitle();
+try {
+  showRanking();
+} catch (err) {
+  console.error('Error in showRanking:', err);
+}
+
+try {
+  displayTopScoresOnTitle();
+} catch (err) {
+  console.error('Error in displayTopScoresOnTitle:', err);
+}
+
 setState("title");
 requestAnimationFrame(gameLoop);
+console.log('Game initialized successfully');
