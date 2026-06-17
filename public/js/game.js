@@ -109,12 +109,26 @@ const soundDestroy = new Audio("../destroy.mp3");
 const soundShoot = new Audio("../shoot.mp3");
 const soundHit = new Audio("../hit.mp3");
 const soundCoin = new Audio("../coin.mp3");
+const soundHeal = new Audio("../heal.mp3");
+
+/*BGM*/
+const bgmNormal = new Audio("../bgm.mp3");
+const bgmBoss = new Audio("../boss_bgm.mp3");
+
+// BGMの設定
+bgmNormal.loop = true;  // ループ再生
+bgmBoss.loop = true;    // ループ再生
+bgmNormal.volume = 0.1; // 音量設定（0～1）
+bgmBoss.volume = 1.0;   // 音量設定（0～1）
+
+let currentBGM = null;  // 現在再生中のBGM
 
 // 効果音のボリューム調整
 soundDestroy.volume = 0.3;
 soundShoot.volume = 0.2;
 soundHit.volume = 0.3;
 soundCoin.volume = 0.3;
+soundHeal.volume = 0.3;
 
 const BASE_FPS = 60;
 
@@ -154,6 +168,15 @@ function playTone(freq, duration = 0.12, type = "sine", gain = 0.12) {
 
 function setState(newState) {
   currentState = newState;
+  
+  // タイトル画面に戻るときはBGMを停止
+  if (newState === "title") {
+    bgmNormal.pause();
+    bgmBoss.pause();
+    bgmNormal.currentTime = 0;
+    bgmBoss.currentTime = 0;
+  }
+  
   titleScreen.classList.toggle("hidden", newState !== "title");
   levelSelect.classList.toggle("hidden", newState !== "levelSelect");
   gameOverScreen.classList.toggle("hidden", newState !== "gameOver");
@@ -311,7 +334,13 @@ function startLevel(level) {
   };
   if (initialEnemy) addEnemy(initialEnemy);
   setState("play");
-  playTone(190, 0.18, "triangle", 0.16);
+  
+  // 通常BGMを再生開始
+  bgmBoss.pause();
+  bgmBoss.currentTime = 0;
+  bgmNormal.currentTime = 0;
+  bgmNormal.play().catch(e => console.log("BGM play error:", e));
+  currentBGM = "normal";
 }
 
 function addEnemy(type) {
@@ -364,7 +393,13 @@ function spawnBoss() {
     vy: 0,
   };
   gameData.bossStart = performance.now();
-  playTone(80, 0.4, "sawtooth", 0.2);
+  
+  // ボス戦BGMに切り替え
+  bgmNormal.pause();
+  bgmNormal.currentTime = 0;
+  bgmBoss.currentTime = 0;
+  bgmBoss.play().catch(e => console.log("Boss BGM play error:", e));
+  currentBGM = "boss";
 }
 
 function spawnItem(x, y, type) {
@@ -608,7 +643,9 @@ function updateCollisions() {
         player.hp -= 1;
         player.invincible = 20;
         bullet.y = settings.canvasHeight + 30;
-        playTone(90, 0.15, "square", 0.16);
+        // MP3音声を再生
+        soundHit.currentTime = 0;
+        soundHit.play().catch(e => console.log("Hit sound error:", e));
       }
     }
     // Homing bullets heal boss on hit (確率を30%に下げ、最大HPを超えないように修正)
@@ -618,11 +655,8 @@ function updateCollisions() {
       }
       bullet.y = settings.canvasHeight + 30;
       // MP3音声を再生
-      soundHit.currentTime = 0;
-      soundHit.play().catch(e => console.log("Hit sound error:", e));
-      
-      // 被弾時の爆発エフェクト
-      spawnEffect(player.x + player.w / 2, player.y + player.h / 2, 50, 20);
+      soundHeal.currentTime = 0;
+      soundHeal.play().catch(e => console.log("Heal sound error:", e));
     }
   });
   if (player.invincible > 0) player.invincible = Math.max(0, player.invincible - (gameData.lastFrameDelta || 0));
@@ -695,7 +729,7 @@ function onEnemyDestroyed(enemy) {
   if (Math.random() < levelSettings[currentLevel].dropCoinRate) {
     spawnItem(enemy.x + 12, enemy.y + 12, "coin");
   }
-  
+
   // アイテムは強敵討伐のメリットのみ
   if (enemy.type === "strong") {
     // 攻撃力増加アイテムはプレイヤーの攻撃力が初期状態（1）の場合のみドロップする
@@ -719,6 +753,10 @@ function onBossDefeated() {
   gameData.bossStart = null;
   gameData.gameOver = true;
   playTone(120, 0.5, "sawtooth", 0.2);
+  
+  // ボス戦BGMを停止
+  bgmBoss.pause();
+  bgmBoss.currentTime = 0;
 }
 
 function updateGame() {
@@ -766,6 +804,12 @@ function updateGame() {
 }
 
 function showGameOver() {
+  // BGMを停止
+  bgmNormal.pause();
+  bgmBoss.pause();
+  bgmNormal.currentTime = 0;
+  bgmBoss.currentTime = 0;
+  
   setState("gameOver");
   // Score is now accumulated during gameplay (addition based)
   let finalScoreValue = gameData.score;
